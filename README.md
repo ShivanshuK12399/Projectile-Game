@@ -5,7 +5,7 @@ A complete, playable, stable 2D physics-based projectile game developed in Unity
 ---
 
 ## 1. Game Overview
-The player controls a projectile ball launched from an elevated starting pedestal using an intuitive drag-to-aim mechanism. When dragged, the game calculates and renders a real-time **Trajectory Preview** showing the predicted flight path. Upon release, the projectile is launched into free 2D physics flight.
+The player controls a projectile ball launched from an elevated starting pedestal using an intuitive drag-to-aim mechanism. When dragged, the projectile ball remains strictly static in its place on the pedestal while an aiming pull-indicator stretches backward, and the game calculates and renders a real-time **Trajectory Preview** showing the predicted flight path. Upon release, the projectile is launched directly from the pedestal into free 2D physics flight.
 
 When the ball reaches the curved ramp, the game validates the incoming physical parameters (speed, angle of impact, and surface alignment):
 - **Correct Shot:** The ball smoothly traverses the curved surface, slides down the ramp, and safely lands in the goal area at the bottom, triggering a **Success** state.

@@ -111,7 +111,43 @@ namespace ProjectileGame.Projectile
 
         public void SetVisualDragPosition(Vector2 dragPos)
         {
-            transform.position = new Vector3(dragPos.x, dragPos.y, spawnPosition.z);
+            // Kept for backward compatibility: keeps position static at spawnPosition
+            transform.position = spawnPosition;
+        }
+
+        public void SetVisualAimCharge(Vector2 launchDirection, float chargeRatio)
+        {
+            // Keep projectile strictly static at its spawn position on the pedestal
+            transform.position = spawnPosition;
+
+            // Subtle in-place squash & stretch tension along launch direction
+            chargeRatio = Mathf.Clamp01(chargeRatio);
+            if (launchDirection.sqrMagnitude > 0.001f)
+            {
+                float angle = Mathf.Atan2(launchDirection.y, launchDirection.x) * Mathf.Rad2Deg;
+                transform.rotation = Quaternion.Euler(0, 0, angle);
+            }
+
+            float stretch = 1.0f + 0.18f * chargeRatio;
+            float squash = 1.0f - 0.14f * chargeRatio;
+            transform.localScale = new Vector3(initialScale.x * stretch, initialScale.y * squash, initialScale.z);
+
+            // Subtle charge glow tint
+            if (spriteRenderer != null)
+            {
+                spriteRenderer.color = Color.Lerp(initialColor, new Color(1f, 0.95f, 0.55f, 1f), chargeRatio * 0.7f);
+            }
+        }
+
+        public void ResetVisualAimCharge()
+        {
+            transform.position = spawnPosition;
+            transform.rotation = Quaternion.identity;
+            transform.localScale = initialScale;
+            if (spriteRenderer != null)
+            {
+                spriteRenderer.color = initialColor;
+            }
         }
 
         public void ResetProjectile()

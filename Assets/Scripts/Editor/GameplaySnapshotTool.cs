@@ -49,7 +49,7 @@ namespace ProjectileGame.EditorScripts
             File.WriteAllBytes("Assets/snapshot_1_initial.png", screenShot.EncodeToPNG());
             Debug.Log("[SnapshotTool] Saved Assets/snapshot_1_initial.png");
 
-            // Step 2: Aiming Drag Snapshot (Pull ball backward-down)
+            // Step 2: Aiming Drag Snapshot (Ball remains static on pedestal with in-place charge, line pulls back)
             Vector2 dragStart = launcher.LaunchAnchor != null ? (Vector2)launcher.LaunchAnchor.position : new Vector2(-6.5f, 2.0f);
             Vector2 aimPullPos = dragStart + new Vector2(-1.3f, -1.1f); // Dragged backward-down
             Vector2 dragVector = dragStart - aimPullPos;
@@ -57,7 +57,8 @@ namespace ProjectileGame.EditorScripts
             float dragDist = Mathf.Clamp(dragVector.magnitude, 0f, launcher.MaxDragDistance);
             Vector2 launchVel = launchDir * (dragDist * 13f);
 
-            projectile.SetVisualDragPosition(dragStart - launchDir * dragDist);
+            // Keep projectile static at pedestal anchor and apply in-place charge tension
+            projectile.SetVisualAimCharge(launchDir, dragDist / launcher.MaxDragDistance);
             traj.ShowTrajectory(dragStart, launchVel, projectile.GravityScale);
 
             cam.Render();

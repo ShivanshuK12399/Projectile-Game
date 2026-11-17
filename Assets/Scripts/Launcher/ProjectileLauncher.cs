@@ -167,12 +167,13 @@ namespace ProjectileGame.Launcher
 
             currentDragPos = dragStartPos - launchDirection * dragDistance;
 
-            // Visually pull back the ball along with the drag
+            // Projectile remains strictly static on its pedestal with in-place charge feedback
             if (projectile != null)
             {
-                projectile.SetVisualDragPosition(currentDragPos);
+                projectile.SetVisualAimCharge(launchDirection, dragDistance / maxDragDistance);
             }
 
+            // Slingshot indicator line stretches from static ball to drag position
             if (aimLineRenderer != null)
             {
                 aimLineRenderer.SetPosition(0, dragStartPos);
@@ -199,6 +200,11 @@ namespace ProjectileGame.Launcher
             isDragging = false;
             if (aimLineRenderer != null) aimLineRenderer.enabled = false;
             if (trajectoryPreview != null) trajectoryPreview.HideTrajectory();
+
+            if (projectile != null)
+            {
+                projectile.ResetVisualAimCharge();
+            }
 
             Vector2 dragVector = dragStartPos - currentDragPos;
             float dragDistance = Mathf.Clamp(dragVector.magnitude, 0f, maxDragDistance);
@@ -228,9 +234,13 @@ namespace ProjectileGame.Launcher
         public void CancelAim()
         {
             isDragging = false;
-            if (projectile != null && GameManager.Instance != null && GameManager.Instance.CurrentState == GameState.Aiming)
+            if (projectile != null)
             {
-                projectile.ResetProjectile();
+                projectile.ResetVisualAimCharge();
+                if (GameManager.Instance != null && GameManager.Instance.CurrentState == GameState.Aiming)
+                {
+                    projectile.ResetProjectile();
+                }
             }
             if (aimLineRenderer != null) aimLineRenderer.enabled = false;
             if (trajectoryPreview != null) trajectoryPreview.HideTrajectory();
