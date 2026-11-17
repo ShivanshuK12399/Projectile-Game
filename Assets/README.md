@@ -27,7 +27,7 @@ When the ball reaches the curved ramp, the game validates the incoming physical 
 ### A. Core Architecture
 The codebase is structured into modular, decoupled components following single responsibility principles:
 - `GameState.cs`: Enum defining `Ready`, `Aiming`, `Launched`, `FollowingSurface`, `Success`, and `Failure`.
-- `GameManager.cs`: Coordinates state transitions, out-of-bounds boundary checks, and flight timeouts.
+- `GameManager.cs`: Coordinates state transitions, out-of-bounds boundary checks, flight timeouts, and enforces target 60 FPS frame rate (`Application.targetFrameRate = 60`, `QualitySettings.vSyncCount = 0`).
 - `ProjectileLauncher.cs`: Handles touch/mouse input, drag clamping, launch force calculation, and coordinates with the Trajectory Preview.
 - `TrajectoryPreview.cs`: Real-time parabolic physics projection with segment circle-casting.
 - `ProjectileController.cs`: Manages 2D Rigidbody dynamics, squash & stretch animation, trail rendering, and reset logic.
@@ -69,7 +69,11 @@ When `OnCollisionEnter2D` occurs on the curved ramp:
    - **Zero Velocity Overriding:** The ball remains 100% driven by Unity's native `Rigidbody2D` dynamic physics. The script does not artificially override velocities upon impact, allowing Unity's Box2D physics solver to naturally calculate all contact normal impulses, restitution bounces, friction-generated torque, and gravity!
    - **Realistic Tennis/Rubber Ball Feel:** Equipped with a tuned `PhysicsMaterial2D` (bounciness $0.55$, friction $0.4$) on both the ball's `CircleCollider2D` and the ramp's `EdgeCollider2D`. The ball produces satisfying, realistic physical bounces on impact, naturally transitions into rotational rolling along the outer face of the curve, and launches cleanly into the basket.
    - **Continuous Collision Precision:** Uses `CollisionDetectionMode2D.Continuous` on the projectile Rigidbody2D, guaranteeing that high-velocity impacts never tunnel or clip through the curve edges.
-   - **Non-Instant Failure:** Imperfect shots never freeze mid-air or instantly fail on the ramp; the ball bounces naturally with 2D physics restitution, giving the player full time to watch the trajectory play out. Failure is only triggered if the ball drops below the screen (`lowerBoundaryY = -6.0`) or exceeds the flight timeout ($12.0$s).
+   - **Non-Instant, Physics-Driven Failure Conditions:**
+     - **Out of Bounds:** Triggered if the ball drops below the playable screen boundary (`lowerBoundaryY = -6.0`).
+     - **Early Rest Failure Detection:** If the ball comes to a complete stop or rolls to a standstill outside the goal ($\|\vec{v}\| \le 0.2$ m/s continuously for $1.0$s after an initial $0.8$s launch grace period), the game automatically triggers failure with visual feedback and shows the Retry button. This eliminates long, frustrating idle waits when a missed shot settles on the floor or an obstacle ledge.
+     - **Goal Zone Protection:** When the ball is inside the green target basket (`GoalTrigger`), early rest failure is automatically suppressed so the goal trigger can award victory upon settling.
+     - **Flight Timeout Safeguard:** As an absolute backstop, any shot still in motion after $12.0$s triggers a timeout failure.
 
 ### C. Target Catch Basket & Rest Detection
 The target goal is structured as a physical U-shaped catch basket:
@@ -89,9 +93,14 @@ The target goal is structured as a physical U-shaped catch basket:
      - **Right Backboard Ramp (`Ramp_RightBackboard`):** Sloping up-right at $34.92^\circ$ towards the upper-right corner to catch overshoots and funnel them down into the chute.
      - **Target Basket (`Goal_Level1`):** U-shaped neon green basket nestled inside the chute at `(2.45, -1.2)` with solid walls and floor (`BasketWallMaterial`) and `GoalTrigger` rest detection.
    - **Intended Trajectory:** Launch along the central slope to roll over the peak into the chute, or lob high to bounce off the right backboard into the green basket.
-2. **Level 2 (Challenging S-Curve Setup):**
-   - **Geometry:** Multi-arc cubic S-curve ramp situated higher and further back, leading into an offset target box.
-   - **Tolerances:** Tighter angle deviation ($65^\circ$) and requires higher initial launch force to crest the entry lip.
+2. **Level 2 (Rebuilt from User Hand-Drawn Sketch: Pachinko Deflector Funnel Course):**
+   - **Geometry:** Rebuilt to match the user's hand-drawn sketch `media_1794938591425_24ace4b8.png`:
+     - **Upper Deflector Ramps:** Left ramp (`L2_UpperRamp_Left`) and right ramp (`L2_UpperRamp_Right`) sloping downward at $\pm 33.69^\circ$ to deflect high-arcing shots downward into the course.
+     - **Central Stem Divider (`L2_VerticalStem`):** Vertical obstacle at $x = 2.5$ ($y = 3.5$ to $0.3$) that creates dual entry chutes.
+     - **Middle Splitter Wedge:** Peaked roof (`L2_WedgeRoof_Left` and `L2_WedgeRoof_Right` at $\pm 27.47^\circ$) centered at `(2.5, 0.3)` that cleanly splits descending shots left or right.
+     - **Lower Funnel Collection Ramps:** Left and right ramps (`L2_BottomRamp_Left` and `L2_BottomRamp_Right` at $\pm 33.3^\circ$) equipped with `CurvedSurface`, neon glow line overlays, and low-friction `RampPhysicsMaterial`.
+     - **Target Basket (`Goal_Level2`):** Green U-shaped basket with physical walls and floor nestled directly under the funnel opening at `(2.5, -4.5)` with `GoalTrigger` rest detection.
+   - **Intended Trajectory:** Launch high into the upper deflector funnel to bounce past the stem onto the splitter wedge, slide down the lower funnel ramp, and roll off the lip directly into the green target basket!
    - **Progression:** Accessible via the "Next Level" button upon completing Level 1.
 
 ---
@@ -105,7 +114,7 @@ The target goal is structured as a physical U-shaped catch basket:
 ---
 
 ## 8. Quality & Verification
-- All automated gameplay tests pass with **8/8 green checks** in Unity batchmode (`AutomatedTestRunner.cs`).
+- All automated gameplay tests pass with **11/11 green checks** in Unity batchmode (`AutomatedTestRunner.cs`).
 - Verified zero compilation warnings or errors in Unity 6000.3.8f1.
 - Clean scene setup automated via `SceneSetupAutomation.cs` (no manual Inspector configuration needed).
 

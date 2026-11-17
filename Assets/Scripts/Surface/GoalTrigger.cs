@@ -22,6 +22,7 @@ namespace ProjectileGame.Surface
             if (proj != null)
             {
                 currentProjectile = proj;
+                proj.SetInGoalZone(true);
                 restTimer = 0f;
                 timeInGoal = 0f;
             }
@@ -63,6 +64,12 @@ namespace ProjectileGame.Surface
 
         private void OnTriggerExit2D(Collider2D other)
         {
+            ProjectileController proj = other.GetComponent<ProjectileController>();
+            if (proj != null)
+            {
+                proj.SetInGoalZone(false);
+            }
+
             if (other.GetComponent<ProjectileController>() == currentProjectile)
             {
                 currentProjectile = null;
@@ -86,6 +93,11 @@ namespace ProjectileGame.Surface
 
         public void ResetTrigger()
         {
+            if (currentProjectile != null)
+            {
+                currentProjectile.SetInGoalZone(false);
+            }
+
             hasTriggered = false;
             currentProjectile = null;
             restTimer = 0f;

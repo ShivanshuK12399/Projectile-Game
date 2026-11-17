@@ -41,14 +41,17 @@ namespace ProjectileGame.Level
             if (level1Root != null) level1Root.SetActive(currentLevel == 1);
             if (level2Root != null) level2Root.SetActive(currentLevel == 2);
 
-            // Re-bake current surface
-            CurvedSurface activeSurface = (currentLevel == 1) ? 
-                level1Root?.GetComponentInChildren<CurvedSurface>() : 
-                level2Root?.GetComponentInChildren<CurvedSurface>();
+            // Re-bake all active curved surfaces
+            CurvedSurface[] activeSurfaces = (currentLevel == 1) ? 
+                level1Root?.GetComponentsInChildren<CurvedSurface>() : 
+                level2Root?.GetComponentsInChildren<CurvedSurface>();
 
-            if (activeSurface != null)
+            if (activeSurfaces != null)
             {
-                activeSurface.BakeCurve();
+                foreach (var surface in activeSurfaces)
+                {
+                    surface.BakeCurve();
+                }
             }
 
             RestartCurrentLevel();

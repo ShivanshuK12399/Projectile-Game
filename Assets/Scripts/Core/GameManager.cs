@@ -16,6 +16,10 @@ namespace ProjectileGame.Core
         [SerializeField] private float lowerBoundaryY = -6.0f;
         [SerializeField] private float flightTimeoutSeconds = 12.0f;
 
+        [Header("Framerate Settings")]
+        [SerializeField] private int targetFrameRate = 60;
+        [SerializeField] private bool disableVSyncForTargetFps = true;
+
         private float stateTimer = 0f;
 
         private void Awake()
@@ -28,6 +32,26 @@ namespace ProjectileGame.Core
             {
                 Destroy(gameObject);
                 return;
+            }
+
+            ApplyFramerateSettings();
+        }
+
+        public void ApplyFramerateSettings()
+        {
+            if (disableVSyncForTargetFps)
+            {
+                QualitySettings.vSyncCount = 0;
+            }
+            Application.targetFrameRate = targetFrameRate;
+            Debug.Log($"[GameManager] Target frame rate set to {targetFrameRate} FPS (vSyncCount: {QualitySettings.vSyncCount})");
+        }
+
+        private void OnValidate()
+        {
+            if (Application.isPlaying)
+            {
+                ApplyFramerateSettings();
             }
         }
 
@@ -73,6 +97,7 @@ namespace ProjectileGame.Core
         }
 
         public float LowerBoundaryY => lowerBoundaryY;
+        public int TargetFrameRate => targetFrameRate;
     }
 }
 

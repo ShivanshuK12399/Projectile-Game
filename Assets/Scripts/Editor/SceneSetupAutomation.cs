@@ -39,7 +39,27 @@ namespace ProjectileGame.EditorScripts
         private static void CheckBuildTrigger()
         {
             string triggerPath = Path.Combine(Application.dataPath, "run_build.trigger");
+            string snapTriggerPath = Path.Combine(Application.dataPath, "run_snapshots.trigger");
             string completePath = Path.Combine(Application.dataPath, "build_complete.txt");
+
+            if (File.Exists(snapTriggerPath))
+            {
+                try
+                {
+                    File.Delete(snapTriggerPath);
+                    Debug.Log("[SceneSetupAutomation] Snapshots trigger found! Running AutomatedTestRunner and GameplaySnapshotTool...");
+                    AutomatedTestRunner.RunAllTests();
+                    GameplaySnapshotTool.RunSessionAndSnapshots();
+                    File.WriteAllText(completePath, "SNAPSHOTS_SUCCESS at " + System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                    Debug.Log("[SceneSetupAutomation] Automated snapshots and tests completed successfully!");
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogError("[SceneSetupAutomation] Error during snapshots: " + ex);
+                    File.WriteAllText(completePath, "SNAPSHOTS_ERROR: " + ex.Message);
+                }
+            }
+
             if (File.Exists(triggerPath))
             {
                 try
@@ -47,6 +67,7 @@ namespace ProjectileGame.EditorScripts
                     File.Delete(triggerPath);
                     Debug.Log("[SceneSetupAutomation] Trigger found! Running BuildScene and GameplaySnapshotTool...");
                     BuildScene();
+                    AutomatedTestRunner.RunAllTests();
                     GameplaySnapshotTool.RunSessionAndSnapshots();
                     File.WriteAllText(completePath, "SUCCESS at " + System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
                     Debug.Log("[SceneSetupAutomation] Automated build and snapshots completed successfully!");
@@ -220,20 +241,8 @@ namespace ProjectileGame.EditorScripts
             GameObject rampObj = CreateBorderedBlock("Ramp_Upward", new Vector3(0.05f, 1.4f, 0), new Vector3(4.18f, 0.25f, 1f), 42.09f, level1Root.transform, squareSprite, unlitMat, blockFill, blockBorder, rampMat);
 
             // Attach CurvedSurface component to Upward Ramp for assignment rubric compliance
-            CurvedSurface surface1 = rampObj.AddComponent<CurvedSurface>();
-            LineRenderer curveLine1 = rampObj.GetComponent<LineRenderer>();
-            curveLine1.material = unlitMat;
-            curveLine1.startColor = new Color(0.2f, 0.9f, 0.6f, 1f);
-            curveLine1.endColor = new Color(0.1f, 0.6f, 0.9f, 1f);
-            curveLine1.startWidth = 0.12f;
-            curveLine1.endWidth = 0.12f;
-
-            Transform[] cp1 = new Transform[3];
-            cp1[0] = CreateControlPoint("CP0", new Vector3(-1.5f, 0.0f, 0), rampObj.transform);
-            cp1[1] = CreateControlPoint("CP1", new Vector3(0.05f, 1.4f, 0), rampObj.transform);
-            cp1[2] = CreateControlPoint("CP2", new Vector3(1.6f, 2.8f, 0), rampObj.transform);
-            surface1.SetControlPoints(cp1);
-            surface1.ConfigureValidation(1.0f, 25.0f, 75.0f);
+            AttachCurvedSurface(rampObj, unlitMat, new Color(0.2f, 0.9f, 0.6f, 1f), new Color(0.1f, 0.6f, 0.9f, 1f),
+                new Vector3(-1.5f, 0.0f, 0), new Vector3(0.05f, 1.4f, 0), new Vector3(1.6f, 2.8f, 0));
 
             // Left Chute Wall (Drops straight down from peak (1.6, 2.8) to floor y = -5.1, height 7.9, center (1.475, -1.15))
             CreateBorderedBlock("Wall_ChuteLeft", new Vector3(1.475f, -1.15f, 0), new Vector3(0.25f, 7.9f, 1f), 0f, level1Root.transform, squareSprite, unlitMat, blockFill, blockBorder, null);
@@ -250,29 +259,42 @@ namespace ProjectileGame.EditorScripts
             // Goal Area (Green U-Basket inside chute channel at x = 2.45, y = -1.2)
             CreateTargetBasket("Goal_Level1", new Vector3(2.45f, -1.2f, 0), level1Root.transform, squareSprite, unlitMat, basketMat, greenNeon);
 
-            // 7. Level 2 Setup (Preserved for multi-level progression)
+            // 7. Level 2 Setup (From User Hand-Drawn Sketch: Pachinko / Deflector Funnel System)
             GameObject level2Root = new GameObject("Level2_Setup");
 
-            GameObject curve2Obj = new GameObject("Curve_Level2");
-            curve2Obj.transform.SetParent(level2Root.transform, false);
-            CurvedSurface surface2 = curve2Obj.AddComponent<CurvedSurface>();
+            // Boundary Walls for Level 2
+            CreateBorderedBlock("L2_Floor", new Vector3(0, -5.3f, 0), new Vector3(20f, 0.4f, 1f), 0f, level2Root.transform, squareSprite, unlitMat, new Color(0.1f, 0.11f, 0.14f), blockBorder, null);
+            CreateBorderedBlock("L2_Ceiling", new Vector3(0, 5.3f, 0), new Vector3(20f, 0.4f, 1f), 0f, level2Root.transform, squareSprite, unlitMat, new Color(0.1f, 0.11f, 0.14f), blockBorder, null);
+            CreateBorderedBlock("L2_LeftWall", new Vector3(-9.6f, 0, 0), new Vector3(0.4f, 11.5f, 1f), 0f, level2Root.transform, squareSprite, unlitMat, new Color(0.1f, 0.11f, 0.14f), blockBorder, null);
+            CreateBorderedBlock("L2_RightWall", new Vector3(9.6f, 0, 0), new Vector3(0.4f, 11.5f, 1f), 0f, level2Root.transform, squareSprite, unlitMat, new Color(0.1f, 0.11f, 0.14f), blockBorder, null);
 
-            LineRenderer curveLine2 = curve2Obj.GetComponent<LineRenderer>();
-            curveLine2.material = unlitMat;
-            curveLine2.startColor = new Color(0.9f, 0.3f, 0.8f, 1f);
-            curveLine2.endColor = new Color(0.3f, 0.5f, 1f, 1f);
-            curveLine2.startWidth = 0.15f;
-            curveLine2.endWidth = 0.15f;
+            // 1. Top Left Deflector Ramp (from (-1.5, 3.6) to (1.2, 1.8), center (-0.15, 2.7), rot -33.69 deg, length 3.25)
+            CreateBorderedBlock("L2_UpperRamp_Left", new Vector3(-0.15f, 2.7f, 0), new Vector3(3.25f, 0.25f, 1f), -33.69f, level2Root.transform, squareSprite, unlitMat, blockFill, blockBorder, rampMat);
 
-            Transform[] cp2 = new Transform[4];
-            cp2[0] = CreateControlPoint("CP0", new Vector3(1.2f, 3.8f, 0), curve2Obj.transform);
-            cp2[1] = CreateControlPoint("CP1", new Vector3(6.2f, 3.0f, 0), curve2Obj.transform);
-            cp2[2] = CreateControlPoint("CP2", new Vector3(3.5f, -0.5f, 0), curve2Obj.transform);
-            cp2[3] = CreateControlPoint("CP3", new Vector3(-0.5f, -2.8f, 0), curve2Obj.transform);
-            surface2.SetControlPoints(cp2);
-            surface2.ConfigureValidation(1.5f, 25.0f, 65.0f);
+            // 2. Top Right Deflector Ramp (from (6.5, 3.6) to (3.8, 1.8), center (5.15, 2.7), rot +33.69 deg, length 3.25)
+            CreateBorderedBlock("L2_UpperRamp_Right", new Vector3(5.15f, 2.7f, 0), new Vector3(3.25f, 0.25f, 1f), 33.69f, level2Root.transform, squareSprite, unlitMat, blockFill, blockBorder, rampMat);
 
-            CreateTargetBasket("Goal_Level2", new Vector3(-1.2f, -3.4f, 0), level2Root.transform, squareSprite, unlitMat, basketMat, greenNeon);
+            // 3. Center Vertical Divider / Stem (center (2.5, 1.9), height 3.2, from y = 3.5 to y = 0.3)
+            CreateBorderedBlock("L2_VerticalStem", new Vector3(2.5f, 1.9f, 0), new Vector3(0.25f, 3.2f, 1f), 0f, level2Root.transform, squareSprite, unlitMat, blockFill, blockBorder, null);
+
+            // 4. Middle Wedge Roof Left (from (2.5, 0.3) to (0.0, -1.0), center (1.25, -0.35), rot 27.47 deg, length 2.82)
+            CreateBorderedBlock("L2_WedgeRoof_Left", new Vector3(1.25f, -0.35f, 0), new Vector3(2.82f, 0.25f, 1f), 27.47f, level2Root.transform, squareSprite, unlitMat, blockFill, blockBorder, rampMat);
+
+            // 5. Middle Wedge Roof Right (from (2.5, 0.3) to (5.0, -1.0), center (3.75, -0.35), rot -27.47 deg, length 2.82)
+            CreateBorderedBlock("L2_WedgeRoof_Right", new Vector3(3.75f, -0.35f, 0), new Vector3(2.82f, 0.25f, 1f), -27.47f, level2Root.transform, squareSprite, unlitMat, blockFill, blockBorder, rampMat);
+
+            // 6. Bottom Funnel Ramp Left (from (-2.0, -1.5) to (1.5, -3.8), center (-0.25, -2.65), rot -33.3 deg, length 4.19, with CurvedSurface)
+            GameObject botLeftRamp = CreateBorderedBlock("L2_BottomRamp_Left", new Vector3(-0.25f, -2.65f, 0), new Vector3(4.19f, 0.25f, 1f), -33.3f, level2Root.transform, squareSprite, unlitMat, blockFill, blockBorder, rampMat);
+            AttachCurvedSurface(botLeftRamp, unlitMat, new Color(0.2f, 0.9f, 0.6f, 1f), new Color(0.1f, 0.6f, 0.9f, 1f),
+                new Vector3(-2.0f, -1.5f, 0), new Vector3(-0.25f, -2.65f, 0), new Vector3(1.5f, -3.8f, 0));
+
+            // 7. Bottom Funnel Ramp Right (from (7.0, -1.5) to (3.5, -3.8), center (5.25, -2.65), rot 33.3 deg, length 4.19, with CurvedSurface)
+            GameObject botRightRamp = CreateBorderedBlock("L2_BottomRamp_Right", new Vector3(5.25f, -2.65f, 0), new Vector3(4.19f, 0.25f, 1f), 33.3f, level2Root.transform, squareSprite, unlitMat, blockFill, blockBorder, rampMat);
+            AttachCurvedSurface(botRightRamp, unlitMat, new Color(0.9f, 0.3f, 0.8f, 1f), new Color(0.3f, 0.5f, 1f, 1f),
+                new Vector3(7.0f, -1.5f, 0), new Vector3(5.25f, -2.65f, 0), new Vector3(3.5f, -3.8f, 0));
+
+            // 8. Target Basket at bottom center under funnel opening: (2.5, -4.5)
+            CreateTargetBasket("Goal_Level2", new Vector3(2.5f, -4.5f, 0), level2Root.transform, squareSprite, unlitMat, basketMat, greenNeon);
 
             level2Root.SetActive(false);
 
@@ -398,6 +420,24 @@ namespace ProjectileGame.EditorScripts
             obj.transform.position = pos;
             obj.transform.SetParent(parent, true);
             return obj.transform;
+        }
+
+        private static void AttachCurvedSurface(GameObject rampObj, Material mat, Color startCol, Color endCol, Vector3 p0, Vector3 p1, Vector3 p2)
+        {
+            CurvedSurface surface = rampObj.AddComponent<CurvedSurface>();
+            LineRenderer curveLine = rampObj.GetComponent<LineRenderer>();
+            curveLine.material = mat;
+            curveLine.startColor = startCol;
+            curveLine.endColor = endCol;
+            curveLine.startWidth = 0.12f;
+            curveLine.endWidth = 0.12f;
+
+            Transform[] cp = new Transform[3];
+            cp[0] = CreateControlPoint("CP0", p0, rampObj.transform);
+            cp[1] = CreateControlPoint("CP1", p1, rampObj.transform);
+            cp[2] = CreateControlPoint("CP2", p2, rampObj.transform);
+            surface.SetControlPoints(cp);
+            surface.ConfigureValidation(1.0f, 25.0f, 75.0f);
         }
 
         private static void BuildGameUI(ProjectileLauncher launcher, Sprite bgSprite)
@@ -587,4 +627,3 @@ namespace ProjectileGame.EditorScripts
         }
     }
 }
-// Trigger reload

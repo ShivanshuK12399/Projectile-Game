@@ -34,9 +34,12 @@ namespace ProjectileGame.EditorScripts
             Assert(projectile != null, "ProjectileController exists");
             Assert(trajectory != null, "TrajectoryPreview exists");
 
-            // Test 1: Initial Game State
+            // Test 1: Initial Game State & Framerate
             Assert(gm.CurrentState == GameState.Ready, $"Initial State is Ready (Current: {gm.CurrentState})");
             Assert(lm.CurrentLevel == 1, $"Initial Level is 1 (Current: {lm.CurrentLevel})");
+            gm.ApplyFramerateSettings();
+            Assert(gm.TargetFrameRate == 60, $"GameManager targetFrameRate is 60 (Current: {gm.TargetFrameRate})");
+            Assert(Application.targetFrameRate == 60, $"Application.targetFrameRate is set to 60 (Current: {Application.targetFrameRate})");
 
             // Test 2: Aiming State & Trajectory Preview
             Vector2 launchVel = new Vector2(10f, 8f);
@@ -78,6 +81,27 @@ namespace ProjectileGame.EditorScripts
             }
             Assert(gm.CurrentState == GameState.Failure, $"Out of bounds triggers Failure state (Current: {gm.CurrentState})");
 
+            // Test 5b: Early Rest Failure Detection (Ball stopped outside goal)
+            Debug.Log("--- Simulating Early Rest Failure Detection ---");
+            lm.RestartCurrentLevel();
+            gm.SetState(GameState.Launched);
+            projectile.Rigidbody.bodyType = RigidbodyType2D.Dynamic;
+            projectile.Rigidbody.linearVelocity = Vector2.zero; // Ball stopped on floor/obstacle outside goal
+
+            // Advance time past minFlightTimeBeforeRestCheck (0.8s) + earlyRestDuration (1.0s)
+            projectile.SimulateEarlyRestCheck(0.9f);
+            Assert(gm.CurrentState == GameState.Launched, "Ball during initial rest check is still in Launched state");
+            projectile.SimulateEarlyRestCheck(1.1f);
+            Assert(gm.CurrentState == GameState.Failure, $"Early rest outside goal triggers Failure state (Current: {gm.CurrentState})");
+
+            // Test 5c: Goal Zone suppresses Early Rest Failure
+            lm.RestartCurrentLevel();
+            gm.SetState(GameState.Launched);
+            projectile.Rigidbody.linearVelocity = Vector2.zero;
+            projectile.SetInGoalZone(true); // Ball entered target basket
+            projectile.SimulateEarlyRestCheck(2.0f);
+            Assert(gm.CurrentState == GameState.Launched, "Goal zone correctly suppresses early rest failure");
+
             // Test 6: Retry Reset
             Debug.Log("--- Simulating Retry Functionality ---");
             lm.RestartCurrentLevel();
@@ -109,7 +133,7 @@ namespace ProjectileGame.EditorScripts
             lm.LoadLevel(1);
             Assert(gm.CurrentState == GameState.Ready, "Game successfully reset back to Level 1 Ready state");
 
-            Debug.Log("=================== ALL AUTOMATED GAMEPLAY TESTS PASSED (8/8) ===================");
+            Debug.Log("=================== ALL AUTOMATED GAMEPLAY TESTS PASSED (11/11) ===================");
         }
 
         private static void Assert(bool condition, string message)

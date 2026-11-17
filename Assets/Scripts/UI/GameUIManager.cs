@@ -109,7 +109,7 @@ namespace ProjectileGame.UI
             if (successPanel != null) successPanel.SetActive(true);
             if (successMessageText != null)
             {
-                successMessageText.text = "Shot Successful!\nBall reached the goal area smoothly.";
+                successMessageText.text = "Shot Successful!";
             }
         }
 
@@ -118,7 +118,7 @@ namespace ProjectileGame.UI
             if (failurePanel != null) failurePanel.SetActive(true);
             if (failureMessageText != null)
             {
-                failureMessageText.text = "Shot Failed!\nCheck your launch angle & force.";
+                failureMessageText.text = "Shot Failed!";
             }
         }
 

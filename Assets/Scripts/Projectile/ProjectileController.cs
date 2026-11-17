@@ -19,11 +19,32 @@ namespace ProjectileGame.Projectile
         [SerializeField] private Vector3 spawnPosition;
         [SerializeField] private float gravityScale = 1.6f;
 
+        [Header("Early Rest Failure Detection")]
+        [SerializeField] private bool enableEarlyRestFailure = true;
+        [Tooltip("Maximum velocity speed to consider the projectile at rest")]
+        [SerializeField] private float earlyRestSpeedThreshold = 0.2f;
+        [Tooltip("Continuous duration at rest required to trigger failure")]
+        [SerializeField] private float earlyRestDuration = 1.0f;
+        [Tooltip("Minimum flight time before rest failure can be evaluated")]
+        [SerializeField] private float minFlightTimeBeforeRestCheck = 0.8f;
+
         [SerializeField] private Vector3 initialScale = new Vector3(3.2f, 3.2f, 1f);
         [SerializeField] private Color initialColor = new Color(1f, 0.85f, 0.2f, 1f);
         private Coroutine followPathCoroutine;
 
+        private float flightTimer = 0f;
+        private float earlyRestTimer = 0f;
+        private bool isInGoalZone = false;
+
         public float GravityScale => gravityScale;
+        public bool EnableEarlyRestFailure => enableEarlyRestFailure;
+        public float EarlyRestSpeedThreshold => earlyRestSpeedThreshold;
+        public float EarlyRestDuration => earlyRestDuration;
+        public float MinFlightTimeBeforeRestCheck => minFlightTimeBeforeRestCheck;
+        public float FlightTimer => flightTimer;
+        public float EarlyRestTimer => earlyRestTimer;
+        public bool IsInGoalZone => isInGoalZone;
+
         public Rigidbody2D Rigidbody
         {
             get
@@ -77,19 +98,107 @@ namespace ProjectileGame.Projectile
         {
             if (GameManager.Instance == null) return;
 
-            // Check out of bounds
+            // Check out of bounds & early rest failure
             if (GameManager.Instance.CurrentState == GameState.Launched ||
                 GameManager.Instance.CurrentState == GameState.FollowingSurface)
             {
                 if (transform.position.y < GameManager.Instance.LowerBoundaryY)
                 {
                     OnOutOfBounds();
+                    return;
                 }
+
+                CheckEarlyRestFailure();
+            }
+        }
+
+        private void CheckEarlyRestFailure()
+        {
+            if (!enableEarlyRestFailure || isInGoalZone)
+            {
+                earlyRestTimer = 0f;
+                return;
+            }
+
+            flightTimer += Time.deltaTime;
+            if (flightTimer < minFlightTimeBeforeRestCheck)
+            {
+                return;
+            }
+
+            float currentSpeed = Velocity.magnitude;
+            if (currentSpeed <= earlyRestSpeedThreshold)
+            {
+                earlyRestTimer += Time.deltaTime;
+                if (earlyRestTimer >= earlyRestDuration)
+                {
+                    OnEarlyRestFailure();
+                }
+            }
+            else
+            {
+                earlyRestTimer = 0f;
+            }
+        }
+
+        private void OnEarlyRestFailure()
+        {
+            if (GameManager.Instance == null) return;
+            if (GameManager.Instance.CurrentState != GameState.Launched &&
+                GameManager.Instance.CurrentState != GameState.FollowingSurface) return;
+
+            Debug.Log($"[ProjectileController] Early rest failure detected! Ball stopped moving outside goal (Speed: {Velocity.magnitude:F2} m/s, RestDuration: {earlyRestTimer:F2}s).");
+            if (feedback != null)
+            {
+                feedback.PlayFailureFeedback();
+            }
+            GameManager.Instance.TriggerFailure("Projectile came to a stop!");
+        }
+
+        public void SetInGoalZone(bool inGoal)
+        {
+            isInGoalZone = inGoal;
+            if (inGoal)
+            {
+                earlyRestTimer = 0f;
+            }
+        }
+
+        public void ConfigureEarlyRestFailure(bool enable, float speedThreshold, float duration, float minFlightTime)
+        {
+            enableEarlyRestFailure = enable;
+            earlyRestSpeedThreshold = speedThreshold;
+            earlyRestDuration = duration;
+            minFlightTimeBeforeRestCheck = minFlightTime;
+        }
+
+        public void SimulateEarlyRestCheck(float deltaTime)
+        {
+            if (!enableEarlyRestFailure || isInGoalZone) return;
+            flightTimer += deltaTime;
+            if (flightTimer < minFlightTimeBeforeRestCheck) return;
+
+            float currentSpeed = Velocity.magnitude;
+            if (currentSpeed <= earlyRestSpeedThreshold)
+            {
+                earlyRestTimer += deltaTime;
+                if (earlyRestTimer >= earlyRestDuration)
+                {
+                    OnEarlyRestFailure();
+                }
+            }
+            else
+            {
+                earlyRestTimer = 0f;
             }
         }
 
         public void Launch(Vector2 initialVelocity)
         {
+            flightTimer = 0f;
+            earlyRestTimer = 0f;
+            isInGoalZone = false;
+
             if (rb == null) return;
 
             rb.bodyType = RigidbodyType2D.Dynamic;
@@ -152,6 +261,10 @@ namespace ProjectileGame.Projectile
 
         public void ResetProjectile()
         {
+            flightTimer = 0f;
+            earlyRestTimer = 0f;
+            isInGoalZone = false;
+
             if (followPathCoroutine != null)
             {
                 StopCoroutine(followPathCoroutine);

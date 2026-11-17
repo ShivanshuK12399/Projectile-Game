@@ -93,15 +93,68 @@ namespace ProjectileGame.EditorScripts
             File.WriteAllBytes("Assets/snapshot_4_success.png", screenShot.EncodeToPNG());
             Debug.Log("[SnapshotTool] Saved Assets/snapshot_4_success.png");
 
-            // Cleanup & restore
+            // ================= Level 2 Snapshots =================
+            Debug.Log("[SnapshotTool] Starting Level 2 Snapshots...");
+            lm.LoadLevel(2);
+            projectile.ResetProjectile();
+            if (gm != null) gm.SetState(GameState.Ready);
+
+            // Level 2 Step 1: Ready State
+            cam.Render();
+            RenderTexture.active = rt;
+            screenShot.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+            screenShot.Apply();
+            File.WriteAllBytes("Assets/snapshot_l2_1_ready.png", screenShot.EncodeToPNG());
+            Debug.Log("[SnapshotTool] Saved Assets/snapshot_l2_1_ready.png");
+
+            // Level 2 Step 2: Aiming & Trajectory Preview targeting upper deflectors
+            Vector2 l2LaunchVel = new Vector2(10.5f, 9.2f);
+            projectile.SetVisualAimCharge(l2LaunchVel.normalized, 0.8f);
+            traj.ShowTrajectory(dragStart, l2LaunchVel, projectile.GravityScale);
+            cam.Render();
+            RenderTexture.active = rt;
+            screenShot.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+            screenShot.Apply();
+            File.WriteAllBytes("Assets/snapshot_l2_2_aiming.png", screenShot.EncodeToPNG());
+            Debug.Log("[SnapshotTool] Saved Assets/snapshot_l2_2_aiming.png");
+
+            // Level 2 Step 3: Ball traversing down lower funnel ramp
+            traj.HideTrajectory();
+            projectile.ResetVisualAimCharge();
+            projectile.transform.position = new Vector3(-0.5f, -2.4f, 0); // Rolling on lower-left funnel ramp
+            if (trail != null)
+            {
+                trail.emitting = true;
+            }
+            if (gm != null) gm.SetState(GameState.FollowingSurface);
+            cam.Render();
+            RenderTexture.active = rt;
+            screenShot.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+            screenShot.Apply();
+            File.WriteAllBytes("Assets/snapshot_l2_3_funnel.png", screenShot.EncodeToPNG());
+            Debug.Log("[SnapshotTool] Saved Assets/snapshot_l2_3_funnel.png");
+
+            // Level 2 Step 4: Ball rested inside Goal_Level2 basket
+            projectile.transform.position = new Vector3(2.5f, -4.35f, 0); // Inside Goal_Level2 basket
+            if (gm != null) gm.TriggerSuccess("Ball rested in the target!");
+            cam.Render();
+            RenderTexture.active = rt;
+            screenShot.ReadPixels(new Rect(0, 0, width, height), 0, 0);
+            screenShot.Apply();
+            File.WriteAllBytes("Assets/snapshot_l2_4_success.png", screenShot.EncodeToPNG());
+            Debug.Log("[SnapshotTool] Saved Assets/snapshot_l2_4_success.png");
+
+            // Cleanup & restore back to Level 1 Ready
             cam.targetTexture = null;
             RenderTexture.active = null;
             Object.DestroyImmediate(rt);
             Object.DestroyImmediate(screenShot);
 
             lm.LoadLevel(1);
+            projectile.ResetProjectile();
+            if (gm != null) gm.SetState(GameState.Ready);
             EditorSceneManager.SaveScene(scene);
-            Debug.Log("[SnapshotTool] All 4 snapshots completed successfully!");
+            Debug.Log("[SnapshotTool] All Level 1 and Level 2 snapshots completed successfully!");
         }
     }
 }
